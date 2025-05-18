@@ -1,25 +1,27 @@
-
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-const s3 = new S3Client({
-  region: process.env.AWS_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY!,
-    secretAccessKey: process.env.AWS_SECRET_KEY!,
-  },
-});
-
 export default async function handler(req, res) {
-  const { fileName, fileType } = req.body;
+  const { AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_BUCKET_NAME, AWS_REGION } = process.env;
+  const crypto = await import('crypto');
+  const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
 
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_BUCKET_NAME!,
-    Key: `uploads/${Date.now()}-${fileName}`,
-    ContentType: fileType,
+  const { filename } = JSON.parse(req.body);
+  const fileKey = Date.now() + '-' + filename;
+
+  const client = new S3Client({
+    region: AWS_REGION,
+    credentials: {
+      accessKeyId: AWS_ACCESS_KEY,
+      secretAccessKey: AWS_SECRET_KEY,
+    },
   });
 
-  const url = await getSignedUrl(s3, command, { expiresIn: 300 });
+  const command = new PutObjectCommand({
+    Bucket: AWS_BUCKET_NAME,
+    Key: fileKey,
+    ContentType: 'application/octet-stream',
+  });
 
-  res.status(200).json({ uploadUrl: url });
+  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+  const url = await getSignedUrl(client, command, { expiresIn: 3600 });
+
+  res.status(200).json({ url, key: fileKey });
 }

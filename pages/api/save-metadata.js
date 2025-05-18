@@ -1,13 +1,13 @@
-
 import { db } from '../../lib/db';
 
 export default async function handler(req, res) {
-  const { fileName, fileSize, fileUrl } = req.body;
+  const { name, size, url } = JSON.parse(req.body);
 
-  const result = await db.query(
-    'INSERT INTO files (name, size, url, uploaded_at) VALUES ($1, $2, $3, NOW()) RETURNING id',
-    [fileName, fileSize, fileUrl]
-  );
-
-  res.status(200).json({ id: result.rows[0].id });
+  try {
+    await db.query('INSERT INTO files (name, size, url) VALUES ($1, $2, $3)', [name, size, url]);
+    res.status(200).json({ message: 'Metadata saved' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
 }
